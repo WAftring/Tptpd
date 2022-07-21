@@ -7,6 +7,7 @@ namespace Tptpd
         {
             Console.WriteLine("Tptpd vers 1.0");
             Settings settings = new Settings(args);
+            Logger.SetLevel(Logger.LEVELS.TRACE);
             if (settings.Valid)
             {
                 PtpServer ptpServer = new PtpServer();

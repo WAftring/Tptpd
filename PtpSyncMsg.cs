@@ -12,6 +12,7 @@ namespace Tptpd
             version = 2;
             Length = MSG_SIZE;
             flags.Set(PtpFlags.MsgFlags.PTP_UNICAST);
+
             // TODO(will): Fix this
             SourcePortID = 35;
             sequenceId = _sequenceId;

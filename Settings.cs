@@ -13,12 +13,15 @@ namespace Tptpd
             try
             {
                 if ((args[0] == PARAM_ADD_IP || args[0] == PARAM_ADD_IPS) && args.Length == 2)
+                {
                     IPAddresses = args[1].Split(",");
+                    Valid = true;
+                }
                 else if (args[0] == SWITCH_HELP)
                     ShowHelp();
                 else
                     throw new InvalidDataException("Invalid arguments");
-                Valid = true;
+
             }
             catch (IndexOutOfRangeException e)
             {

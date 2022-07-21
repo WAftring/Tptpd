@@ -4,6 +4,8 @@ using System.Threading;
 
 namespace Tptpd
 {
+
+    // TODO implement multicast
     class PtpServer
     {
         const int PTP_DEFAULT_LISTEN_PORT = 319;
@@ -51,12 +53,11 @@ namespace Tptpd
             Logger.Trace("AddClient exit");
             return true;
         }
+
+        // TODO Add PtpAnnounce
         public void Start()
         {
             Logger.Trace("Start enter");
-#if DEBUG
-            CreateTestPackets();
-#else
             listenerThread = new Thread(new ThreadStart(ListenerThread));
             listenerThread.Start();
             foreach (var client in unicastClients)
@@ -66,7 +67,6 @@ namespace Tptpd
             }
             Console.ReadLine();
             running = false;
-#endif
             Logger.Trace("Start exit");
         }
 

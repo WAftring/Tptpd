@@ -13,6 +13,7 @@ namespace Tptpd
         }
         static LEVELS Level;
 
+        public static void SetLevel(LEVELS set) { Level = set; }
         public static void Trace(string msg)
         {
             if (Level.HasFlag(LEVELS.TRACE))

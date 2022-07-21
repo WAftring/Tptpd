@@ -61,7 +61,8 @@ namespace Tptpd
             Sync = 0x0,
             DelayReq = 0x1,
             FollowUp = 0x8,
-            DelayResp = 0x9
+            DelayResp = 0x9,
+            Announce = 0xA
 
         }
         internal enum FIELD
@@ -69,7 +70,9 @@ namespace Tptpd
             Sync = 0,
             FollowUp = 1,
             DelayReq = 2,
-            DelayResp = 3
+            DelayResp = 3,
+            Management = 4,
+            Misc = 5
         }
         internal byte messageType;
         internal byte version;
