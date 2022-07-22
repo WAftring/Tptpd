@@ -12,6 +12,7 @@ namespace Tptpd
         const int PTP_DEFAULT_SEND_PORT = 320;
         IPEndPoint endpoint;
         List<Timer> broadcastTimer;
+        List<Timer> announceTimer;
         List<IPAddress> unicastClients;
         object sequenceLock;
         Int16 sequenceId;
@@ -22,6 +23,7 @@ namespace Tptpd
         {
             unicastClients = new List<IPAddress>();
             broadcastTimer = new List<Timer>();
+            announceTimer = new List<Timer>();
             sequenceLock = new object();
             endpoint = new IPEndPoint(IPAddress.Any, 319);
         }
@@ -34,6 +36,7 @@ namespace Tptpd
             {
                 IPEndPoint sender = new IPEndPoint(IPAddress.Any, 319);
                 byte[] delayReqData = listener.Receive(ref sender);
+                Logger.Trace($"Received data from {sender.ToString()}");
                 PtpDelayRespMsg respMsg = new PtpDelayRespMsg(delayReqData);
                 byte[] delayResp = respMsg.GetBytes();
                 listener.Connect(sender.Address, PTP_DEFAULT_SEND_PORT);
@@ -54,22 +57,38 @@ namespace Tptpd
             return true;
         }
 
-        // TODO Add PtpAnnounce
         public void Start()
         {
             Logger.Trace("Start enter");
+#if DEBUG
+            CreateTestPackets();
+#else
             listenerThread = new Thread(new ThreadStart(ListenerThread));
             listenerThread.Start();
             foreach (var client in unicastClients)
             {
-                Timer timer = new Timer(SyncFollowUpRoutine, client, 0, 1000);
-                broadcastTimer.Add(timer);
+                Timer aTimer = new Timer(AnnounceRoutine, client, 0, PtpAnnounceMsg.ANNOUNCE_INTERVAL);
+                Timer bTimer = new Timer(SyncFollowUpRoutine, client, 0, 1000);
+
+                broadcastTimer.Add(bTimer);
+                announceTimer.Add(aTimer);
             }
             Console.ReadLine();
             running = false;
+#endif
             Logger.Trace("Start exit");
         }
 
+        void AnnounceRoutine(Object _clientIP)
+        {
+            IPAddress clientIP = (IPAddress)_clientIP;
+            Logger.Trace($"AnnounceRoutine enter {clientIP.ToString()}");
+            using UdpClient announceClient = new UdpClient();
+            announceClient.Connect(clientIP, PTP_DEFAULT_SEND_PORT);
+            PtpAnnounceMsg announceMsg = new PtpAnnounceMsg();
+            announceClient.Send(announceMsg.GetBytes(), announceMsg.Length);
+            Logger.Trace($"AnnounceRoutine exit");
+        }
         void SyncFollowUpRoutine(Object _clientIP)
         {
             IPAddress clientIP = (IPAddress)_clientIP;
@@ -88,11 +107,9 @@ namespace Tptpd
 
             syncClient.Connect(clientIP, PtpSyncMsg.PORT);
             followupClient.Connect(clientIP, PtpFollowUpMsg.PORT);
-            byte[] syncBytes = syncMsg.GetBytes();
-            syncClient.Send(syncBytes, syncBytes.Length);
+            syncClient.Send(syncMsg.GetBytes(), syncMsg.Length);
             followUpMsg.SetTimeStamp();
-            byte[] followUpBytes = followUpMsg.GetBytes();
-            followupClient.Send(followUpBytes, followUpBytes.Length);
+            followupClient.Send(followUpMsg.GetBytes(), followUpMsg.Length);
             Logger.Trace("SyncFollowUpRoutine exit");
         }
 
@@ -103,17 +120,21 @@ namespace Tptpd
             byte[] reqData = new byte[44];
             Array.Fill<byte>(reqData, 0xFF);
 
+            using UdpClient announceClient = new UdpClient();
             using UdpClient syncClient = new UdpClient();
             using UdpClient followupClient = new UdpClient();
             using UdpClient delayRespClient = new UdpClient();
+
+            announceClient.Connect(IPAddress.Loopback, PtpAnnounceMsg.PORT);
             syncClient.Connect(IPAddress.Loopback, PtpSyncMsg.PORT);
             followupClient.Connect(IPAddress.Loopback, PtpFollowUpMsg.PORT);
             delayRespClient.Connect(IPAddress.Loopback, PtpDelayRespMsg.PORT);
-
+            PtpAnnounceMsg anncMsg = new PtpAnnounceMsg();
             PtpSyncMsg syncMsg = new PtpSyncMsg(sequenceId);
             PtpFollowUpMsg followupMsg = new PtpFollowUpMsg(sequenceId);
             PtpDelayRespMsg delayRespMsg = new PtpDelayRespMsg(reqData);
 
+            announceClient.Send(anncMsg.GetBytes(), anncMsg.Length);
             syncClient.Send(syncMsg.GetBytes(), syncMsg.Length);
             followupClient.Send(followupMsg.GetBytes(), followupMsg.Length);
             delayRespClient.Send(delayRespMsg.GetBytes(), delayRespMsg.Length);

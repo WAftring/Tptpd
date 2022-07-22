@@ -27,17 +27,9 @@ namespace Tptpd
             PTP_PROILE2 = 0x4000,
             PTP_SECURITY = 0x8000
         }
-        public UInt32 value { get; private set; }
-        public void Set(MsgFlags flag)
-        {
-            if ((value & (UInt32)flag) != 0)
-                value += (UInt32)flag;
-        }
-        public void Unset(MsgFlags flag)
-        {
-            if ((value & (UInt32)flag) != 0)
-                value -= (UInt32)flag;
-        }
+        public MsgFlags value { get; private set; }
+        public void Set(MsgFlags flag) { value |= flag; }
+        public void Unset(MsgFlags flag) { value &= ~flag; }
     }
     class PtpMsg
     {
@@ -49,8 +41,8 @@ namespace Tptpd
         internal const int FLAGS_OFFSET = 0x6;
         internal const int CORRECTIONFIELD_OFFSET = 0x8;
         //const int MESSAGETYPESPECIFIC_OFFSET = 0x11;
-        internal const int CLOCKIDENTITY_OFFSET = 0x10;
-        internal const int SOURCEPORT_OFFSET = 0x14;
+        internal const int CLOCKIDENTITY_OFFSET = 0x14;
+        internal const int SOURCEPORT_OFFSET = 0x1C;
         internal const int SEQUENCEID_OFFSET = 0x1E;
         internal const int CONTROLFIELD_OFFSET = 0x20;
         internal const int LOGMESSAGE_OFFSET = 0x21;
@@ -62,14 +54,14 @@ namespace Tptpd
             DelayReq = 0x1,
             FollowUp = 0x8,
             DelayResp = 0x9,
-            Announce = 0xA
+            Announce = 0xB
 
         }
         internal enum FIELD
         {
             Sync = 0,
-            FollowUp = 1,
-            DelayReq = 2,
+            DelayReq = 1,
+            FollowUp = 2,
             DelayResp = 3,
             Management = 4,
             Misc = 5
@@ -97,9 +89,11 @@ namespace Tptpd
             data[MESSAGETYPE_OFFSET] = messageType;
             data[VERSION_OFFSET] = version;
             Array.Copy(ReverseArray(BitConverter.GetBytes(Length)), 0, data, Length_OFFSET, 2);
-            Array.Copy(ReverseArray(BitConverter.GetBytes(flags.value)), 0, data, FLAGS_OFFSET, 4);
-            Array.Copy(ReverseArray(BitConverter.GetBytes(ClockIdentity)), 0, data, CLOCKIDENTITY_OFFSET, 8);
-            Array.Copy(BitConverter.GetBytes(SourcePortID), 0, data, SOURCEPORT_OFFSET, 2);
+            Array.Copy(ReverseArray(BitConverter.GetBytes((Int16)flags.value)), 0, data, FLAGS_OFFSET, 2);
+            // TODO figure out the right way to deal with this
+            Array.Fill<byte>(data, 0x57, CLOCKIDENTITY_OFFSET, 8);
+            //Array.Copy(ReverseArray(BitConverter.GetBytes(ClockIdentity)), 0, data, CLOCKIDENTITY_OFFSET, 8);
+            Array.Copy(ReverseArray(BitConverter.GetBytes(SourcePortID)), 0, data, SOURCEPORT_OFFSET, 2);
             Array.Copy(ReverseArray(BitConverter.GetBytes(sequenceId)), 0, data, SEQUENCEID_OFFSET, 2);
             data[CONTROLFIELD_OFFSET] = controlField;
             data[LOGMESSAGE_OFFSET] = logMessagePeriod;
